@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import PatientDashboard from "./pages/PatientDashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 function App() {
   const { isAuthenticated } = useAuth0();
@@ -28,13 +29,17 @@ function App() {
       <Route
         path="/dashboard/doctor"
         element={
-          isAuthenticated ? <DoctorDashboard /> : <Navigate to="/" replace />
+          <ProtectedRoute requiredRole="doctor">
+            <DoctorDashboard />
+          </ProtectedRoute>
         }
       />
       <Route
         path="/dashboard/patient"
         element={
-          isAuthenticated ? <PatientDashboard /> : <Navigate to="/" replace />
+          <ProtectedRoute requiredRole="patient">
+            <PatientDashboard />
+          </ProtectedRoute>
         }
       />
     </Routes>

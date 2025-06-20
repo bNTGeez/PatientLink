@@ -1,8 +1,24 @@
 import { useEffect } from "react";
-import { useAuth0 } from "@auth0/auth0-react";
-import DoctorDashboard from "./DoctorDashboard";
-import PatientDashboard from "./PatientDashboard";
+import { useNavigate } from "react-router";
+import getUserRoles from "../utils/useHook";
 
 export default function Dashboard() {
-  return <div>Dashboard</div>;
+  const { isDoctor, isPatient, isAuthenticated } = getUserRoles();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (isDoctor) {
+        navigate("/dashboard/doctor");
+      } else if (isPatient) {
+        navigate("/dashboard/patient");
+      }
+    }
+  }, [isDoctor, isPatient, isAuthenticated, navigate]);
+
+  return (
+    <div>
+      <h1>Dashboard</h1>
+    </div>
+  );
 }
