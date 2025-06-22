@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import getUserRoles from "../utils/useHook";
+import LogoutButton from "../components/LogoutButton";
 
 export default function Dashboard() {
   const { isDoctor, isPatient, isAuthenticated } = getUserRoles();
@@ -19,6 +20,7 @@ export default function Dashboard() {
   return (
     <div>
       <h1>Dashboard</h1>
+      <LogoutButton />
     </div>
   );
 }
