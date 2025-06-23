@@ -27,7 +27,7 @@ if config.config_file_name is not None:
 from app.db import Base
 
 # Import all your models so Alembic can detect them
-from app.models import User, Role, Document
+from app.models import User, Document
 
 target_metadata = Base.metadata
 

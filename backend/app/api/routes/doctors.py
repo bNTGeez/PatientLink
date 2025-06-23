@@ -154,6 +154,38 @@ def unassign_patient(patient_id: str, user = Depends(require_role("doctor")), db
     db.commit()
     return {"message": "Patient unassigned successfully", "patient_id": patient_id}
 
+# add patient to doctor's list
+@router.post("/add-patient")
+def add_patient_to_doctor(patient_auth0_id: str = Form(...), user=Depends(require_role("doctor")), db: Session = Depends(get_db)):
+    doctor = check_user(user, db)
+    
+    patient = db.query(User).filter(User.auth0_user_id == patient_auth0_id, User.role == "patient").first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    
+    if patient.doctor_id:
+        raise HTTPException(
+            status_code=400, 
+            detail="Patient is already assigned to a doctor"
+        )
+    
+    patient.doctor_id = doctor.auth0_user_id
+    db.commit()
+    db.refresh(patient)
+    
+    return {
+        "auth0_user_id": patient.auth0_user_id,
+        "email": patient.email,
+        "first_name": patient.first_name,
+        "last_name": patient.last_name,
+        "phone": patient.phone,
+        "date_of_birth": patient.date_of_birth,
+        "role": patient.role,
+        "doctor_id": patient.doctor_id,
+        "created_at": patient.created_at,
+        "updated_at": patient.updated_at,
+    }
+
 # get all documents for a patient
 @router.get("/patients/{patient_id}/documents")
 def get_patient_documents(patient_id: str, user = Depends(require_role("doctor")), db: Session = Depends(get_db)):

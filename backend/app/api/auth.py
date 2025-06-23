@@ -4,7 +4,7 @@ from app.db import get_db
 from sqlalchemy.orm import Session
 from app.core.security import get_current_user, requires_scope
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.get("/me")
 def get_current_user(user: User = Depends(get_current_user)):

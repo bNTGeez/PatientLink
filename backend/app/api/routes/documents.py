@@ -9,9 +9,9 @@ import uuid
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
-# Get all documents - requires authentication
-@router.get("/{patient_id}")
-def get_patient_documents(patient_id: str, current_user = Depends(require_role("doctor")), db: Session = Depends(get_db)):
+# Get all documents - doctors accessing patient documents
+@router.get("/doctor/{patient_id}")
+def get_patient_documents_for_doctor(patient_id: str, current_user = Depends(require_role("doctor")), db: Session = Depends(get_db)):
   doctor = db.query(User).filter(User.auth0_user_id == current_user.get("user_id")).first()
   if not doctor:
     raise HTTPException(status_code=404, detail="Doctor not found")
@@ -25,6 +25,8 @@ def get_patient_documents(patient_id: str, current_user = Depends(require_role("
   
   documents = db.query(Document).filter(Document.patient_id == patient_id).all()
   return {"documents": documents}
+
+
 
 # Upload a document
 @router.post("/upload")

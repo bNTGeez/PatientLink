@@ -36,7 +36,7 @@ class User(Base):
     # Database constraints, making sure that these are set for consistency
     __table_args__ = (
         CheckConstraint(
-            "(role = 'doctor' AND doctor_id IS NULL) OR (role = 'patient' AND doctor_id IS NOT NULL)",
+            "(role = 'doctor' AND doctor_id IS NULL) OR role = 'patient'",
             name="check_doctor_patient_constraint"
         ),
     )

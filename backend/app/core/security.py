@@ -43,6 +43,9 @@ def get_current_user(token: str = Depends(get_token_auth_header), db: Session = 
     payload = verify_jwt(token)
     auth0_user_id = payload.get('sub')  # Auth0 user ID
     email = payload.get('email')
+    name = payload.get('name')
+    given_name = payload.get('given_name')
+    family_name = payload.get('family_name')
 
     namespace = os.getenv('AUTH0_NAMESPACE')
     roles = payload.get(f'{namespace}roles', [])
@@ -52,13 +55,18 @@ def get_current_user(token: str = Depends(get_token_auth_header), db: Session = 
     return {
         'user_id': auth0_user_id,
         'email': email,
+        'name': name,
+        'given_name': given_name,
+        'family_name': family_name,
         'payload': payload,
         'permissions': permissions,
         'roles': roles
     }
 
-def requires_scope(required_scope: str, payload=Depends(get_current_user)) -> bool:
-    scopes = payload.get("scope", "").split()
-    if required_scope not in scopes:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient scope")
-    return True
+def requires_scope(required_scope: str):
+    def scope_checker(payload: dict = Depends(get_current_user)) -> bool:
+        scopes = payload.get("scope", "").split()
+        if required_scope not in scopes:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient scope")
+        return True
+    return scope_checker
