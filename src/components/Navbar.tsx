@@ -19,7 +19,7 @@ export default function Navbar() {
       <NavLink to="/" className="text-4xl font-bold text-blue-400 px-20 py-5">
         PatientLink
       </NavLink>
-      <div className="flex justify-end w-full items-center">
+      <div className="flex justify-end w-full items-center gap-8 pr-20">
         <NavigationMenu viewport={false}>
           <NavigationMenuList className="gap-10">
             <NavigationMenuItem>
@@ -50,8 +50,8 @@ export default function Navbar() {
             </NavigationMenuItem>
           </NavigationMenuList>
         </NavigationMenu>
+        {isAuthenticated ? <DashboardButton /> : <LoginButton />}
       </div>
-      {isAuthenticated ? <DashboardButton /> : <LoginButton />}
     </div>
   );
 }
