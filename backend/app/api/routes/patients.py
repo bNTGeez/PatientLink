@@ -4,6 +4,7 @@ from app.core.permissions import require_role
 from app.services.checkUser import check_user
 from app.db import get_db
 from app.models.models import User, Document
+from app.services.s3 import generate_presigned_url, S3_BUCKET_NAME
 from typing import Optional
 from pydantic import BaseModel
 
@@ -167,6 +168,40 @@ def get_patient_document(document_id: int, user = Depends(require_role("patient"
         "description": document.description,
         "uploaded_by_id": document.uploaded_by_id,
         "created_at": document.created_at
+    }
+
+# get document preview URL for a patient (their own documents)
+@router.get("/documents/{document_id}/preview")
+def get_patient_document_preview_url(document_id: int, user = Depends(require_role("patient")), db: Session = Depends(get_db)):
+    patient = check_user(user, db)
+    
+    # Check that the document belongs to this patient
+    document = db.query(Document).filter(
+        Document.id == document_id,
+        Document.patient_id == patient.auth0_user_id
+    ).first()
+    
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    try:
+        # Generate presigned URL with content type for proper preview
+        response_headers = {
+            'ResponseContentDisposition': 'inline'
+        }
+        if document.content_type:
+            response_headers['ResponseContentType'] = document.content_type
+        
+        signed_url = generate_presigned_url(
+            document.file_path, 
+            expiration=3600,
+            response_headers=response_headers
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating presigned URL: {e}")
+    
+    return {
+        "url": signed_url
     }
 
 @router.get("/{patient_id}")

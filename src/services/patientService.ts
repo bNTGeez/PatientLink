@@ -70,7 +70,11 @@ export const getDoctorPatients = async (
       throw new Error(`Failed to fetch patients: ${response.statusText}`);
     }
 
-    return response.json();
+    const data = await response.json();
+    return data.map((patient: any) => ({
+      ...patient,
+      auth0_user_id: patient.patient_id, // frontend expects auth0_user_id
+    }));
   } catch (error) {
     console.error("Fetch patients error:", error);
     throw error;

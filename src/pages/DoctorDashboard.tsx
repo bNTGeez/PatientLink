@@ -25,7 +25,6 @@ export default function DoctorDashboard() {
 
   const currentDoctorId = user?.sub;
 
-  // Load patients from API
   const loadPatients = async () => {
     if (!currentDoctorId) return;
 
@@ -39,20 +38,18 @@ export default function DoctorDashboard() {
       setPatients(fetchedPatients);
     } catch (error) {
       console.error("Failed to load patients:", error);
-      setPatients([]); // Set empty array on error
+      setPatients([]); 
     } finally {
       setIsLoadingPatients(false);
     }
   };
 
-  // Load patients when component mounts or user changes
   useEffect(() => {
     if (currentDoctorId) {
       loadPatients();
     }
   }, [currentDoctorId, getAccessTokenSilently]);
 
-  // Also trigger loading when switching to patients view
   useEffect(() => {
     if (activeView === "patients" && currentDoctorId) {
       loadPatients();
@@ -79,12 +76,11 @@ export default function DoctorDashboard() {
     }
   };
 
+  // WIP: Edit patient
   const handleEditPatient = async (values: any) => {
     if (!editingPatient) return;
 
     try {
-      // Here you would typically send the data to your backend
-      // For now, just reload patients and clear editing state
       await loadPatients();
       setEditingPatient(null);
       setActiveView("patients");

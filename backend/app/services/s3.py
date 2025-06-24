@@ -25,25 +25,33 @@ def upload_file(file_obj, bucket, object_name):
   s3_client = get_s3_client()
   try:
     s3_client.upload_fileobj(file_obj, bucket, object_name, ExtraArgs={"ACL": "private"})
-    return generate_presigned_url(bucket, object_name)
+    return generate_presigned_url(object_name)
   except ClientError as e:
     raise Exception(f"Error uploading file to S3: {e}")
 
-# bucket_name is the name of the S3 bucket
-# object_name is the name of the object to generate a presigned URL for
-# expiration is the time in seconds for the presigned URL to remain valid 
-def generate_presigned_url(bucket_name, object_name, expiration=3600):
-  s3_client = get_s3_client()
+# generate a presigned URL for the file under `key` in your bucket
+# param: key: The key of the file in the bucket
+# param: expiration: The expiration time of the presigned URL
+# param: response_headers: Optional dict of response headers to modify the content disposition
+def generate_presigned_url(key: str, expiration: int = 3600, response_headers: dict = None) -> str:
   try:
+    s3_client = get_s3_client()
+    params = {
+      'Bucket': S3_BUCKET_NAME,
+      'Key': key
+    }
+
+    if response_headers:
+      params.update(response_headers)
+    
     response = s3_client.generate_presigned_url(
-      "get_object",
-      Params={"Bucket": bucket_name, "Key": object_name},
-      ExpiresIn=expiration,
+      ClientMethod='get_object',
+      Params=params,
+      ExpiresIn=expiration
     )
+    return response
   except ClientError as e:
-      raise Exception(f"Error generating presigned URL: {e}")
-  
-  return response
+    raise Exception(f"Error generating presigned URL: {e}")
 
 def delete_file(bucket_name, object_name):
   s3_client = get_s3_client()

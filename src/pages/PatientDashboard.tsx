@@ -6,6 +6,7 @@ import DocumentCard from "../components/DocumentCard";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import {
   getPatientDocuments,
+  getPatientDocumentPreviewUrl,
   type Document,
 } from "../services/documentService";
 import {
@@ -23,7 +24,6 @@ export default function PatientDashboard() {
 
   const currentPatientId = user?.sub;
 
-  // Load patient documents
   const loadDocuments = async () => {
     if (!currentPatientId) return;
 
@@ -75,6 +75,25 @@ export default function PatientDashboard() {
     }
   }, [activeView, currentPatientId]);
 
+  // Handle document preview/view
+  const handleView = async (document: Document) => {
+    if (!currentPatientId) return;
+
+    try {
+      const accessToken = await getAccessTokenSilently();
+      const response = await getPatientDocumentPreviewUrl(
+        document.id.toString(),
+        accessToken
+      );
+
+      // Open the document in a new tab for preview
+      window.open(response.url, "_blank");
+    } catch (error) {
+      console.error("Failed to get document URL:", error);
+      alert("Failed to open document. Please try again.");
+    }
+  };
+
   const renderOverview = () => (
     <div className="flex flex-1 flex-col gap-4 p-6">
       <div className="mb-4">
@@ -91,7 +110,11 @@ export default function PatientDashboard() {
       ) : documents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {documents.map((document) => (
-            <DocumentCard key={document.id} document={document} />
+            <DocumentCard
+              key={document.id}
+              document={document}
+              onView={handleView}
+            />
           ))}
         </div>
       ) : (

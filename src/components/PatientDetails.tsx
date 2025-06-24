@@ -5,8 +5,8 @@ import { getFullName } from "../utils/patientHelpers";
 import DocumentCard from "./DocumentCard";
 import {
   getDoctorPatientDocuments,
+  getDoctorPatientDocumentPreviewUrl,
   uploadDocuments,
-  getDocumentDownloadUrl,
   deleteDocument,
   type Document,
 } from "../services/documentService";
@@ -23,7 +23,6 @@ export default function PatientDetails({ patient }: PatientDetailsProps) {
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load documents when component mounts
   useEffect(() => {
     loadDocuments();
   }, [patient.auth0_user_id]);
@@ -77,17 +76,17 @@ export default function PatientDetails({ patient }: PatientDetailsProps) {
     }
   };
 
-  // Handle document download/view
+  // Handle document preview/view
   const handleView = async (document: Document) => {
     try {
       const accessToken = await getAccessTokenSilently();
-      const response = await getDocumentDownloadUrl(
+      const response = await getDoctorPatientDocumentPreviewUrl(
         patient.auth0_user_id,
         document.id.toString(),
         accessToken
       );
 
-      // Open the document in a new tab
+      // Open the document in a new tab for preview
       window.open(response.url, "_blank");
     } catch (error) {
       console.error("Failed to get document URL:", error);
@@ -149,7 +148,7 @@ export default function PatientDetails({ patient }: PatientDetailsProps) {
 
         <div className="flex flex-row mt-10">
           {loading ? (
-            <div className="text-center py-8">
+            <div className="w-full text-center py-8">
               <p className="text-gray-500">Loading documents...</p>
             </div>
           ) : documents.length > 0 ? (
@@ -162,7 +161,7 @@ export default function PatientDetails({ patient }: PatientDetailsProps) {
               />
             ))
           ) : (
-            <div className="text-center py-8">
+            <div className="w-full flex flex-col justify-center items-center text-center py-8">
               <p className="text-gray-500">No documents found.</p>
               <p className="text-gray-400 text-sm mt-2">
                 Upload documents to get started.

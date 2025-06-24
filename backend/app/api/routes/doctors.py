@@ -4,7 +4,10 @@ from app.core.permissions import require_role
 from app.services.checkUser import check_user
 from app.db import get_db
 from app.models.models import User, Document
+from app.services.s3 import upload_file, generate_presigned_url, delete_file, S3_BUCKET_NAME
 from typing import Optional
+import os
+import uuid
 
 router = APIRouter(prefix="/doctors", tags=["doctors"])
 
@@ -209,7 +212,7 @@ def get_patient_documents(patient_id: str, user = Depends(require_role("doctor")
     ]
 
 # add new document for a patient
-@router.post("/patients/{patient_id}/documents")
+@router.post("/patients/{patient_id}/documents/upload")
 def add_patient_document(
     patient_id: str,
     file: UploadFile = File(...),
@@ -228,12 +231,24 @@ def add_patient_document(
     if not doctor.can_upload_for_patient(patient_id):
         raise HTTPException(status_code=403, detail="You cannot upload documents for this patient")
     
-    # STILL NEED TO ADD S3 UPLOAD LATER AND UPDATE FILE PATH
-    file_path = f"/uploads/{patient_id}/{file.filename}"
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+    
+    # Generate unique filename and S3 key
+    base, ext = os.path.splitext(file.filename)
+    unique_name = f"{uuid.uuid4()}{ext}"
+    s3_key = f"documents/{patient_id}/{unique_name}"
+    
+    try:
+        # Upload file to S3
+        presigned_url = upload_file(file.file, S3_BUCKET_NAME, s3_key)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uploading file: {e}")
     
     document = Document(
         filename=file.filename,
-        file_path=file_path,
+        file_path=s3_key,
+        content_type=file.content_type,
         description=description.strip() if description and description.strip() else None,
         patient_id=patient_id,
         uploaded_by_id=doctor.auth0_user_id
@@ -245,6 +260,7 @@ def add_patient_document(
         "document_id": document.id,
         "filename": document.filename,
         "file_path": document.file_path,
+        "content_type": document.content_type,
         "description": document.description,
         "created_at": document.created_at
     }
@@ -296,10 +312,21 @@ def update_patient_document(
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
-    if file:
-        # STILL NEED TO ADD S3 UPLOAD LATER AND UPDATE FILE PATH
-        document.filename = file.filename
-        document.file_path = f"/uploads/{patient_id}/{file.filename}"
+    if file and file.filename:
+        # Generate unique filename and S3 key
+        base, ext = os.path.splitext(file.filename)
+        unique_name = f"{uuid.uuid4()}{ext}"
+        s3_key = f"documents/{patient_id}/{unique_name}"
+        
+        try:
+            # Upload new file to S3
+            presigned_url = upload_file(file.file, S3_BUCKET_NAME, s3_key)
+            # Update document with new file info
+            document.filename = file.filename
+            document.file_path = s3_key
+            document.content_type = file.content_type
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error uploading file: {e}")
     
     # Update description if provided (even if empty to allow clearing)
     if description is not None:
@@ -310,6 +337,7 @@ def update_patient_document(
     return {
         "document_id": document.id,
         "filename": document.filename,
+        "content_type": document.content_type,
         "description": document.description,
         "created_at": document.created_at
     }
@@ -329,7 +357,48 @@ def delete_patient_document(patient_id: str, document_id: int, user = Depends(re
     if not document:
         raise HTTPException(status_code=404, detail="Document not found")
     
+    # Delete from S3
+    try:
+        delete_file(S3_BUCKET_NAME, document.file_path)
+    except Exception as e:
+        print(f"Warning: Failed to delete file from S3: {e}")
+    
+    # Delete from database
     db.delete(document)
     db.commit()
     return {"message": "Document deleted successfully", "document_id": document_id}
+
+# get document preview URL for a patient (for preview)
+@router.get("/patients/{patient_id}/documents/{document_id}/preview")
+def get_patient_document_preview_url(patient_id: str, document_id: int, user = Depends(require_role("doctor")), db: Session = Depends(get_db)):
+    doctor = check_user(user, db)
+    patient = db.query(User).filter(User.auth0_user_id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+    
+    if patient.doctor_id != doctor.auth0_user_id:
+        raise HTTPException(status_code=403, detail="You cannot access this patient")
+    
+    document = db.query(Document).filter(Document.id == document_id).filter(Document.patient_id == patient_id).first()
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    try:
+        response_headers = {
+            'ResponseContentDisposition': 'inline'
+        }
+        if document.content_type:
+            response_headers['ResponseContentType'] = document.content_type
+        
+        signed_url = generate_presigned_url(
+            document.file_path, 
+            expiration=3600,
+            response_headers=response_headers
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating presigned URL: {e}")
+    
+    return {
+        "url": signed_url
+    }
 
